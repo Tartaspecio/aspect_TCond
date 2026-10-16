@@ -1,0 +1,19 @@
+# Rectangular anomaly dimensions and subregion bounds, in meters.
+# The parent anomaly starts at parent_x_min, has width parent_width, and
+# always touches the bottom boundary (y=0), extending upward to parent_height.
+# Set subregion_count from 0 to 4. Only the first subregion_count rectangles
+# are active. Each subregion is specified by its x and y bounds; set y_min=0
+# when it should touch the bottom boundary.
+set Function constants = parent_x_min=0, parent_width=10000e3, parent_height=500e3, \
+                         subregion_count=2, \
+                         subregion_1_x_min=0, subregion_1_x_max=0, \
+                         subregion_1_y_min=0, subregion_1_y_max=0, \
+                         subregion_2_x_min=0, subregion_2_x_max=0, \
+                         subregion_2_y_min=0, subregion_2_y_max=0, \
+                         subregion_3_x_min=0, subregion_3_x_max=0, \
+                         subregion_3_y_min=0, subregion_3_y_max=0, \
+                         subregion_4_x_min=0, subregion_4_x_max=0, \
+                         subregion_4_y_min=0, subregion_4_y_max=0, \
+                         temperature_excess=450, \
+                         basalt_fraction_main=0.30, basalt_fraction_subregion=0.0, \
+                         bgm090mg_fraction_main=0.0, bgm090mg_fraction_subregion=0.0
