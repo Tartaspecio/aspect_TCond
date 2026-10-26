@@ -136,6 +136,12 @@ namespace aspect
     Steinberger<dim>::initialize()
     {
       equation_of_state.initialize();
+      if (use_lookup_thermal_conductivity)
+        for (unsigned int i = 0; i < equation_of_state.number_of_lookups(); ++i)
+          AssertThrow(equation_of_state.get_material_lookup(i).has_thermal_conductivity(),
+                      ExcMessage("Thermal conductivity lookup was selected, but material table "
+                                 + Utilities::int_to_string(i)
+                                 + " does not contain the k,W/m/K column."));
 
       lateral_viscosity_lookup
         = std::make_unique<internal::LateralViscosityLookup>(data_directory+lateral_viscosity_file_name,
@@ -251,6 +257,31 @@ namespace aspect
       return effective_viscosity;
     }
 
+    template <int dim>
+    double
+    Steinberger<dim>::lookup_thermal_conductivity(const double temperature,
+                                                  const double pressure,
+                                                  const std::vector<double> &volume_fractions) const
+    {
+      AssertThrow(volume_fractions.size() == equation_of_state.number_of_lookups(),
+                  ExcMessage("The number of thermal conductivity lookup tables must match the number of volume fractions."));
+
+      std::vector<double> conductivities;
+      conductivities.reserve(volume_fractions.size());
+      for (unsigned int i = 0; i < volume_fractions.size(); ++i)
+        {
+          const double conductivity = equation_of_state.get_material_lookup(i).thermal_conductivity(temperature,
+                                                                                                      pressure);
+          AssertThrow(numbers::is_finite(conductivity) && conductivity > 0.0,
+                      ExcMessage("Thermal conductivity lookup values must be finite and strictly positive for geometric averaging."));
+          conductivities.push_back(conductivity);
+        }
+
+      return MaterialUtilities::average_value(volume_fractions,
+                                              conductivities,
+                                              MaterialUtilities::geometric);
+    }
+
 
 
     template <int dim>
@@ -279,7 +310,8 @@ namespace aspect
 
       // Evaluate the equation of state properties over all evaluation points
       equation_of_state.evaluate(eos_in, eos_outputs);
-      thermal_conductivity->evaluate(in, out);
+      if (!use_lookup_thermal_conductivity)
+        thermal_conductivity->evaluate(in, out);
 
       for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
         {
@@ -308,6 +340,11 @@ namespace aspect
           volume_fractions[i] = MaterialUtilities::compute_volumes_from_masses(mass_fractions,
                                                                                eos_outputs[i].densities,
                                                                                true);
+          if (use_lookup_thermal_conductivity)
+            out.thermal_conductivities[i] = lookup_thermal_conductivity(in.temperature[i],
+                                                                        in.pressure[i],
+                                                                        volume_fractions[i]);
+
           if (in.requests_property(MaterialProperties::viscosity) || in.requests_property(MaterialProperties::additional_outputs))
             {
               out.viscosities[i] = viscosity(i, volume_fractions[i], in, out);
@@ -405,7 +442,7 @@ namespace aspect
           // Thermal conductivity parameters
           ThermalConductivity::Constant<dim>::declare_parameters (prm);
           prm.declare_entry ("Thermal conductivity formulation", "constant",
-                             Patterns::Selection("constant|p-T-dependent"),
+                             Patterns::Selection("constant|p-T-dependent|lookup"),
                              "Which law should be used to compute the thermal conductivity. "
                              "The 'constant' law uses a constant value for the thermal "
                              "conductivity. The 'p-T-dependent' formulation uses equations "
@@ -416,6 +453,9 @@ namespace aspect
                              "thermal expansivity and conductivity "
                              "(https://doi.org/10.1016/j.pepi.2013.02.004) to compute the "
                              "thermal conductivity in dependence of temperature and pressure. "
+                             "The 'lookup' formulation reads thermal conductivity values from "
+                             "the k,W/m/K column of each material table and combines them using "
+                             "a geometric volume-fraction average. "
                              "The thermal conductivity parameter sets can be chosen in such a "
                              "way that either the Stackhouse or the Tosi relations are used. "
                              "The conductivity description can consist of several layers with "
@@ -463,17 +503,27 @@ namespace aspect
 
           // Thermal conductivity parameters
           if (prm.get ("Thermal conductivity formulation") == "constant")
-            thermal_conductivity = std::make_unique<ThermalConductivity::Constant<dim>>();
+            {
+              use_lookup_thermal_conductivity = false;
+              thermal_conductivity = std::make_unique<ThermalConductivity::Constant<dim>>();
+            }
           else if (prm.get ("Thermal conductivity formulation") == "p-T-dependent")
             {
+              use_lookup_thermal_conductivity = false;
               thermal_conductivity = std::make_unique<ThermalConductivity::TosiStackhouse<dim>>();
               if (SimulatorAccess<dim> *sim = dynamic_cast<SimulatorAccess<dim>*>(thermal_conductivity.get()))
                 sim->initialize_simulator (this->get_simulator());
             }
+          else if (prm.get ("Thermal conductivity formulation") == "lookup")
+            {
+              use_lookup_thermal_conductivity = true;
+              thermal_conductivity.reset();
+            }
           else
             AssertThrow(false, ExcMessage("Not a valid thermal conductivity formulation"));
 
-          thermal_conductivity->parse_parameters(prm);
+          if (!use_lookup_thermal_conductivity)
+            thermal_conductivity->parse_parameters(prm);
 
           // Parse the table lookup parameters
           equation_of_state.initialize_simulator (this->get_simulator());
@@ -536,6 +586,15 @@ namespace aspect
         this->model_dependence.compressibility = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::compositional_fields;
         this->model_dependence.specific_heat = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::compositional_fields;
         this->model_dependence.thermal_conductivity = NonlinearDependence::none;
+        if (use_lookup_thermal_conductivity)
+          {
+            this->model_dependence.thermal_conductivity = NonlinearDependence::pressure
+                                                          | NonlinearDependence::temperature;
+            if (equation_of_state.number_of_lookups() > 1)
+              this->model_dependence.thermal_conductivity = NonlinearDependence::pressure
+                                                            | NonlinearDependence::temperature
+                                                            | NonlinearDependence::compositional_fields;
+          }
       }
     }
 

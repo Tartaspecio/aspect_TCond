@@ -206,6 +206,14 @@ namespace aspect
                           MaterialModel::MaterialModelOutputs<dim> &out) const;
 
         /**
+         * Compute the geometric volume-fraction average of conductivity values
+         * from the material lookup tables.
+         */
+        double lookup_thermal_conductivity(const double temperature,
+                                           const double pressure,
+                                           const std::vector<double> &volume_fractions) const;
+
+        /**
          * Whether the compositional fields representing mass fractions
          * should be normalized to one when computing their fractions
          * (if false), or whether there is an additional composition
@@ -245,6 +253,12 @@ namespace aspect
          * pressure- and temperature-dependent thermal conductivity.
          */
         std::unique_ptr<ThermalConductivity::Interface<dim>> thermal_conductivity;
+
+        /**
+         * Whether thermal conductivity is looked up from the material tables
+         * instead of being computed by a thermal-conductivity plugin.
+         */
+        bool use_lookup_thermal_conductivity = false;
 
         /**
          * Compositional prefactors with which to multiply the reference viscosity.
