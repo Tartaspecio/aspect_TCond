@@ -33,6 +33,7 @@
 #include <aspect/utilities.h>
 
 #include <boost/lexical_cast.hpp>
+#include <cstdlib>
 #include <list>
 
 
@@ -63,6 +64,24 @@ namespace aspect
                                             const double pressure) const
         {
           return value(temperature,pressure,thermal_expansivity_values,interpolation);
+        }
+
+        double
+        MaterialLookup::thermal_conductivity(const double temperature,
+                                             const double pressure) const
+        {
+          AssertThrow(has_thermal_conductivity_column,
+                      ExcMessage("The material lookup table does not contain a thermal conductivity column named k,W/m/K."));
+          const double conductivity = value(temperature,pressure,thermal_conductivity_values,interpolation);
+          AssertThrow(numbers::is_finite(conductivity) && conductivity > 0.0,
+                      ExcMessage("Thermal conductivity values in a material lookup table must be finite and strictly positive."));
+          return conductivity;
+        }
+
+        bool
+        MaterialLookup::has_thermal_conductivity() const
+        {
+          return has_thermal_conductivity_column;
         }
 
         double
@@ -241,19 +260,27 @@ namespace aspect
             return values[inT][inp];
           else
             {
+              AssertThrow(values.n_rows() >= 2 && values.n_cols() >= 2,
+                          ExcMessage("Bilinear interpolation requires at least two data points in each dimension."));
+
+              const unsigned int interpolation_temperature_index =
+                std::min(inT, static_cast<unsigned int>(values.n_rows() - 2));
+              const unsigned int interpolation_pressure_index =
+                std::min(inp, static_cast<unsigned int>(values.n_cols() - 2));
+
               // compute the coordinates of this point in the
               // reference cell between the data points
-              const double xi = nT-inT;
-              const double eta = np-inp;
+              const double xi = nT-interpolation_temperature_index;
+              const double eta = np-interpolation_pressure_index;
 
               Assert ((0 <= xi) && (xi <= 1), ExcInternalError());
               Assert ((0 <= eta) && (eta <= 1), ExcInternalError());
 
               // use these coordinates for a bilinear interpolation
-              return ((1-xi)*(1-eta)*values[inT][inp] +
-                      xi    *(1-eta)*values[inT+1][inp] +
-                      (1-xi)*eta    *values[inT][inp+1] +
-                      xi    *eta    *values[inT+1][inp+1]);
+              return ((1-xi)*(1-eta)*values[interpolation_temperature_index][interpolation_pressure_index] +
+                      xi    *(1-eta)*values[interpolation_temperature_index+1][interpolation_pressure_index] +
+                      (1-xi)*eta    *values[interpolation_temperature_index][interpolation_pressure_index+1] +
+                      xi    *eta    *values[interpolation_temperature_index+1][interpolation_pressure_index+1]);
             }
         }
 
@@ -286,8 +313,7 @@ namespace aspect
         double
         MaterialLookup::get_nT(const double temperature) const
         {
-          double bounded_temperature=std::max(min_temp, temperature);
-          bounded_temperature=std::min(bounded_temperature, max_temp-delta_temp);
+          const double bounded_temperature = std::clamp(temperature, min_temp, max_temp);
 
           return (bounded_temperature-min_temp)/delta_temp;
         }
@@ -295,8 +321,7 @@ namespace aspect
         double
         MaterialLookup::get_np(const double pressure) const
         {
-          double bounded_pressure=std::max(min_press, pressure);
-          bounded_pressure=std::min(bounded_pressure, max_press-delta_press);
+          const double bounded_pressure = std::clamp(pressure, min_press, max_press);
 
           return (bounded_pressure-min_press)/delta_press;
         }
@@ -523,6 +548,7 @@ namespace aspect
           n_temperature=0;
           n_pressure=0;
           has_dominant_phase_column = false;
+          has_thermal_conductivity_column = false;
 
           std::string temp;
           // Read data from disk and distribute among processes
@@ -592,10 +618,11 @@ namespace aspect
 
           // here we string match to assign properties to columns
           // column i in text file -> column j in properties
-          // Properties are stored in the order rho, alpha, cp, vp, vs, h
-          std::vector<int> prp_indices(6, -1);
+          // Properties are stored in the order rho, alpha, cp, k, vp, vs, h
+          std::vector<int> prp_indices(7, -1);
           std::vector<int> phase_column_indices;
           unsigned int dominant_phase_column_index = numbers::invalid_unsigned_int;
+          unsigned int thermal_conductivity_column_index = numbers::invalid_unsigned_int;
 
           // First two columns should be P(bar) and T(K).
           // Here we find the order.
@@ -629,12 +656,18 @@ namespace aspect
                 prp_indices[1] = n;
               else if (column_name == "cp,J/K/kg")
                 prp_indices[2] = n;
+              else if (column_name == "k,W/m/K")
+                {
+                  prp_indices[3] = n;
+                  thermal_conductivity_column_index = n;
+                  has_thermal_conductivity_column = true;
+                }
               else if (column_name == "vp,km/s")
-                prp_indices[3] = n;
-              else if (column_name == "vs,km/s")
                 prp_indices[4] = n;
-              else if (column_name == "h,J/kg")
+              else if (column_name == "vs,km/s")
                 prp_indices[5] = n;
+              else if (column_name == "h,J/kg")
+                prp_indices[6] = n;
               else if (column_name == "phase")
                 {
                   has_dominant_phase_column = true;
@@ -661,12 +694,20 @@ namespace aspect
                     }
                 }
             }
-          AssertThrow(std::all_of(prp_indices.begin(), prp_indices.end(), [](int i)
-          {
-            return i>=0;
-          }),
+          AssertThrow(prp_indices[0] >= 0
+                      && prp_indices[1] >= 0
+                      && prp_indices[2] >= 0
+                      && prp_indices[4] >= 0
+                      && prp_indices[5] >= 0
+                      && prp_indices[6] >= 0,
           ExcMessage("The PerpleX lookup file " + filename + " must contain columns with names "
                      "rho,kg/m3, alpha,1/K, cp,J/K/kg, vp,km/s, vs,km/s and h,J/kg."));
+
+          AssertThrow(std::all_of(prp_indices.begin(), prp_indices.end(), [](int i)
+          {
+            return i >= 0 || i == -1;
+          }),
+          ExcInternalError());
 
           std::getline(in, temp); // first data line
 
@@ -684,6 +725,8 @@ namespace aspect
           density_values.reinit(n_temperature,n_pressure);
           thermal_expansivity_values.reinit(n_temperature,n_pressure);
           specific_heat_values.reinit(n_temperature,n_pressure);
+          if (has_thermal_conductivity_column)
+            thermal_conductivity_values.reinit(n_temperature,n_pressure);
           vp_values.reinit(n_temperature,n_pressure);
           vs_values.reinit(n_temperature,n_pressure);
           enthalpy_values.reinit(n_temperature,n_pressure);
@@ -698,17 +741,37 @@ namespace aspect
           unsigned int i = 0;
           std::vector<double> previous_row_values(n_columns, 0.);
 
-          while (!in.eof())
+          for (unsigned int row = 0; row < n_temperature*n_pressure; ++row)
             {
               std::vector<double> row_values(n_columns);
               std::string phase;
 
               for (unsigned int n=0; n<n_columns; ++n)
                 {
+                  bool invalid_numeric_value = false;
                   if (n == dominant_phase_column_index)
                     in >> phase;
                   else
-                    in >> row_values[n]; // assigned as 0 if in.fail() == True
+                    {
+                      std::string value_string;
+                      in >> value_string;
+                      char *end = nullptr;
+                      row_values[n] = std::strtod(value_string.c_str(), &end);
+                      const bool value_was_read = !in.fail()
+                                                  && end != value_string.c_str()
+                                                  && *end == '\0';
+                      invalid_numeric_value = !value_was_read || !numbers::is_finite(row_values[n]);
+
+                      if (n == thermal_conductivity_column_index)
+                        {
+                          AssertThrow(value_was_read,
+                                      ExcMessage("The MAGEMin lookup file " + filename
+                                                 + " has an invalid thermal conductivity value in column k,W/m/K."));
+                          AssertThrow(numbers::is_finite(row_values[n]) && row_values[n] > 0.0,
+                                      ExcMessage("Thermal conductivity values in the MAGEMin lookup file " + filename
+                                                 + " must be finite and strictly positive."));
+                        }
+                    }
 
                   // P-T grids created with PerpleX-werami sometimes contain rows
                   // filled with NaNs at extreme P-T conditions where the thermodynamic
@@ -722,7 +785,7 @@ namespace aspect
                   // files to replace these NaNs before plugging them into ASPECT.
                   // If this lookup encounters invalid doubles it replaces them
                   // with the most recent valid double.
-                  if (in.fail())
+                  if (in.fail() || invalid_numeric_value)
                     {
                       in.clear();
                       row_values[n] = previous_row_values[n];
@@ -731,8 +794,6 @@ namespace aspect
               previous_row_values = row_values;
 
               std::getline(in, temp); // read next line
-              if (in.eof())
-                break;
 
               if (std::find(dominant_phase_names.begin(), dominant_phase_names.end(), phase) == dominant_phase_names.end())
                 dominant_phase_names.push_back(phase);
@@ -747,9 +808,11 @@ namespace aspect
                   density_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[0]];
                   thermal_expansivity_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[1]];
                   specific_heat_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[2]];
-                  vp_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[3]];
-                  vs_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[4]];
-                  enthalpy_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[5]];
+                  if (has_thermal_conductivity_column)
+                    thermal_conductivity_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[3]];
+                  vp_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[4]];
+                  vs_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[5]];
+                  enthalpy_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[6]];
 
                   if (has_dominant_phase_column)
                     {
@@ -767,9 +830,11 @@ namespace aspect
                   density_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[0]];
                   thermal_expansivity_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[1]];
                   specific_heat_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[2]];
-                  vp_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[3]];
-                  vs_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[4]];
-                  enthalpy_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[5]];
+                  if (has_thermal_conductivity_column)
+                    thermal_conductivity_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[3]];
+                  vp_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[4]];
+                  vs_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[5]];
+                  enthalpy_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[6]];
 
                   if (has_dominant_phase_column)
                     {
@@ -1040,13 +1105,13 @@ namespace aspect
                      const std::vector<double> &parameter_values,
                      const enum CompositionalAveragingOperation &average_type)
       {
-        Assert(volume_fractions.size() == parameter_values.size(),
-               ExcMessage ("The volume fractions and parameter values vectors used for averaging "
-                           "have to have the same length! You have provided "
-                           + Utilities::int_to_string(volume_fractions.size()) +
-                           " volume fractions and "
-                           + Utilities::int_to_string(parameter_values.size()) +
-                           " parameter values."));
+        AssertThrow(volume_fractions.size() == parameter_values.size(),
+                    ExcMessage ("The volume fractions and parameter values vectors used for averaging "
+                                "have to have the same length! You have provided "
+                                + Utilities::int_to_string(volume_fractions.size()) +
+                                " volume fractions and "
+                                + Utilities::int_to_string(parameter_values.size()) +
+                                " parameter values."));
 
         double averaged_parameter = 0.0;
 

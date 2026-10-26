@@ -94,6 +94,13 @@ namespace aspect
                                 const double pressure) const;
 
             double
+            thermal_conductivity(const double temperature,
+                                 const double pressure) const;
+
+            bool
+            has_thermal_conductivity() const;
+
+            double
             seismic_Vp(const double temperature,
                        const double pressure) const;
 
@@ -229,6 +236,7 @@ namespace aspect
             dealii::Table<2,double> density_values;
             dealii::Table<2,double> thermal_expansivity_values;
             dealii::Table<2,double> specific_heat_values;
+            dealii::Table<2,double> thermal_conductivity_values;
             dealii::Table<2,double> vp_values;
             dealii::Table<2,double> vs_values;
             dealii::Table<2,double> enthalpy_values;
@@ -255,6 +263,7 @@ namespace aspect
             unsigned int n_columns;
             bool interpolation;
             bool has_dominant_phase_column;
+            bool has_thermal_conductivity_column = false;
             std::vector<std::string> dominant_phase_names;
         };
 
