@@ -139,6 +139,38 @@ viscosity profile, change the model geometry to 3D, and/or adjust the buoyancy (
 
 Also note that the cold downwellings that develop in this model push the initial dense layer at the base of the mantle into a pile of basaltic material, and the structure of thermochemical pile continues to evolve as the model runs. They can resemble the process of subducted slabs sweeping the accumulated basaltic material into a pile and may eventually drive new plumes to rise from the edges of the pile. New plumes may also originate from random locations either inside or outside the pile. The first plume that rises only represents a transient state of the model, and plumes that rise at later points in time might look different. For a research application model to fully understand the dynamics of thermochemical plumes, one may want to run the model for a longer time in a full spherical shell. The interpretations should be based on the dynamics of plumes after the initial transient phase.
 
+## Rectangular Cartesian setup with lookup conductivity
+
+The parameter files
+[`steinberger_thermochemical_plume_cartesian_rectangular.prm`](../steinberger_thermochemical_plume_cartesian_rectangular.prm)
+and
+[`steinberger_thermochemical_plume_cartesian_rectangular_parameters.prm`](../steinberger_thermochemical_plume_cartesian_rectangular_parameters.prm)
+provide an editable Cartesian alternative with six compositional fields, a rectangular
+thermochemical plume, and separately configurable subregions. The initial temperature
+excess uses the same parent rectangle as the composition anomaly.
+
+This setup selects `Thermal conductivity formulation = lookup`. Every assigned
+Perple_X material table must then contain a `k,W/m/K` column with finite,
+strictly positive values on the table's pressure-temperature grid. The model
+interpolates conductivity from each table and uses the geometric volume-fraction
+average
+
+```{math}
+k_{\mathrm{eff}} = \exp\left(\sum_i X_i \ln k_i\right),
+```
+
+where the $X_i$ are the normalized material volume fractions used by the
+Steinberger model. Existing tables without the optional column remain valid for
+the default conductivity formulations, but cannot be used with `lookup`.
+The rectangular parameter file uses the available
+`pyr_Bgm090Mg_with_volume_fractions_lo_res_k.dat` file for its third material
+lookup. That file identifies itself as MORB, and the lookup model uses all of
+its material-property columns, not only `k,W/m/K`. Consequently, this slot uses
+the table's MORB density, heat capacity, expansivity, seismic properties,
+enthalpy, and phase fractions as well as its conductivity. Replace it with a
+validated Bgm090Mg conductivity table if the Bgm090Mg properties are intended
+for this material slot.
+
 ```{figure-md} fig:temperature.multicompstn
 <img src="temperature.multicomp.steinberger.png" style="width:96.0%" />
 

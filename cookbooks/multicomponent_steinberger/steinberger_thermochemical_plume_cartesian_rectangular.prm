@@ -7,7 +7,7 @@ set End time                               = 1e9
 set Adiabatic surface temperature          = 1600.0
 set Use years in output instead of seconds = true
 set Maximum first time step                = 1.e4
-set Resume computation                     = true
+set Resume computation                     = false
 
 # Multiple composition setup
 subsection Compositional fields
@@ -23,14 +23,15 @@ end
 # Geometry and composition constants are defined in
 # steinberger_thermochemical_plume_cartesian_rectangular_parameters.prm.
 subsection Initial composition model
-  set Model name = function
+  set List of model names = function
 
   subsection Function
     set Coordinate system   = cartesian
     set Variable names      = x, y
     # The parent rectangle reaches the bottom at y=0. Its x-width is set by
     # parent_width; subregion bounds are independently editable.
-    # The default two 1000-km-wide subregions are at opposite sides of the box.
+    # Subregions are inactive by default; set subregion_count and their bounds
+    # in the included parameters file to enable them.
     include $ASPECT_SOURCE_DIR/cookbooks/multicomponent_steinberger/steinberger_thermochemical_plume_cartesian_rectangular_parameters.prm
     set Function expression = ((x >= parent_x_min && x <= parent_x_min+parent_width && \
                                 y >= 0 && y <= parent_height) ? \
@@ -73,8 +74,9 @@ subsection Material model
 
   subsection Steinberger model
     set Data directory                   = $ASPECT_SOURCE_DIR/data/material-model/steinberger/
-    # These tables must contain the standard Perple_X columns plus
-    # k,W/m/K for thermal conductivity.
+    # The lookup formulation requires the standard Perple_X columns plus
+    # k,W/m/K in every table. The available *_k file for this slot contains
+    # MORB lookup data, so its full set of material properties is used here.
     set Material file names              = pyr_MS95_with_volume_fractions_lo_res_k.dat, \
           morb_G13_with_volume_fractions_lo_res_k.dat, \
           pyr_Bgm090Mg_with_volume_fractions_lo_res_k.dat, \

@@ -5,9 +5,9 @@
 # are active. Each subregion is specified by its x and y bounds; set y_min=0
 # when it should touch the bottom boundary.
 set Function constants = parent_x_min=0, parent_width=10000e3, parent_height=500e3, \
-                         subregion_count=2, \
-                         subregion_1_x_min=0, subregion_1_x_max=0, \
-                         subregion_1_y_min=0, subregion_1_y_max=0, \
+                         subregion_count=1, \
+                         subregion_1_x_min=0, subregion_1_x_max=10000e3, \
+                         subregion_1_y_min=0, subregion_1_y_max=100e3, \
                          subregion_2_x_min=0, subregion_2_x_max=0, \
                          subregion_2_y_min=0, subregion_2_y_max=0, \
                          subregion_3_x_min=0, subregion_3_x_max=0, \
@@ -16,4 +16,4 @@ set Function constants = parent_x_min=0, parent_width=10000e3, parent_height=500
                          subregion_4_y_min=0, subregion_4_y_max=0, \
                          temperature_excess=450, \
                          basalt_fraction_main=0.30, basalt_fraction_subregion=0.0, \
-                         bgm090mg_fraction_main=0.0, bgm090mg_fraction_subregion=0.0
+                         bgm090mg_fraction_main=0.0, bgm090mg_fraction_subregion=1.0
