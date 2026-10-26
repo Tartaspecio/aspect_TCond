@@ -1,0 +1,18 @@
+|MAGEMin .dat file
+Thermal Conductivity Interpolation Test: invalid look up table (NaN value)
+
+2
+T(K)
+300
+100
+2
+P(bar)
+0
+10000
+2
+9
+T(K) P(bar) rho,kg/m3 alpha,1/K cp,J/K/kg k,W/m/K vp,km/s vs,km/s h,J/kg
+300 0 3300 3e-5 1000 nan 8 4 100000
+400 0 3300 3e-5 1000 2 8 4 100000
+300 10000 3300 3e-5 1000 2 8 4 100000
+400 10000 3300 3e-5 1000 2 8 4 100000
