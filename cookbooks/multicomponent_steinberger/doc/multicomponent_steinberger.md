@@ -145,13 +145,16 @@ The parameter files
 [`steinberger_thermochemical_plume_cartesian_rectangular.prm`](../steinberger_thermochemical_plume_cartesian_rectangular.prm)
 and
 [`steinberger_thermochemical_plume_cartesian_rectangular_parameters.prm`](../steinberger_thermochemical_plume_cartesian_rectangular_parameters.prm)
-provide an editable Cartesian alternative with six compositional fields, a rectangular
-thermochemical plume, and separately configurable subregions. The initial temperature
-excess uses the same parent rectangle as the composition anomaly.
+provide an editable Cartesian alternative with six compositional fields, including
+basalt and harzburgite, a rectangular thermochemical plume, and separately
+configurable subregions. The initial temperature excess uses the same parent
+rectangle as the composition anomaly.
 
 This setup selects `Thermal conductivity formulation = lookup`. Every assigned
-Perple_X material table must then contain a `k,W/m/K` column with finite,
-strictly positive values on the table's pressure-temperature grid. The model
+material table must then contain a `k,W/m/K` or `k_lat,W/m/K` column with finite,
+strictly positive values on the table's pressure-temperature grid. The MAGEMin
+tables used here provide lattice conductivity in column 11 as `k_lat,W/m/K`.
+The other thermodynamic properties are read from their named columns. The model
 interpolates conductivity from each table and uses the geometric volume-fraction
 average
 
@@ -162,14 +165,10 @@ k_{\mathrm{eff}} = \exp\left(\sum_i X_i \ln k_i\right),
 where the $X_i$ are the normalized material volume fractions used by the
 Steinberger model. Existing tables without the optional column remain valid for
 the default conductivity formulations, but cannot be used with `lookup`.
-The rectangular parameter file uses the available
-`pyr_Bgm090Mg_with_volume_fractions_lo_res_k.dat` file for its third material
-lookup. That file identifies itself as MORB, and the lookup model uses all of
-its material-property columns, not only `k,W/m/K`. Consequently, this slot uses
-the table's MORB density, heat capacity, expansivity, seismic properties,
-enthalpy, and phase fractions as well as its conductivity. Replace it with a
-validated Bgm090Mg conductivity table if the Bgm090Mg properties are intended
-for this material slot.
+The MAGEMin tables replace the original pyrolite background, MORB/basalt, and
+Bgm090Mg material tables, respectively. They occupy the background,
+`basalt_fraction`, and `harzburgite_fraction` slots. The remaining four
+material slots and compositional fields are retained from the original setup.
 
 ```{figure-md} fig:temperature.multicompstn
 <img src="temperature.multicomp.steinberger.png" style="width:96.0%" />

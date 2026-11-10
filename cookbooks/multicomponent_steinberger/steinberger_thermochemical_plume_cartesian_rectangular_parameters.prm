@@ -16,4 +16,4 @@ set Function constants = parent_x_min=0, parent_width=10000e3, parent_height=500
                          subregion_4_y_min=0, subregion_4_y_max=0, \
                          temperature_excess=450, \
                          basalt_fraction_main=0.30, basalt_fraction_subregion=0.0, \
-                         bgm090mg_fraction_main=0.0, bgm090mg_fraction_subregion=1.0
+                         harzburgite_fraction_main=0.0, harzburgite_fraction_subregion=1.0

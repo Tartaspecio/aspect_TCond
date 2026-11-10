@@ -65,7 +65,8 @@ namespace aspect
                                              const double pressure) const
         {
           AssertThrow(has_thermal_conductivity_column,
-                      ExcMessage("The material lookup table does not contain a thermal conductivity column named k,W/m/K."));
+                      ExcMessage("The material lookup table does not contain a thermal conductivity column named "
+                                 "k,W/m/K or k_lat,W/m/K."));
           const double conductivity = value(temperature,pressure,thermal_conductivity_values,interpolation);
           AssertThrow(numbers::is_finite(conductivity) && conductivity > 0.0,
                       ExcMessage("Thermal conductivity values in a material lookup table must be finite and strictly positive."));
@@ -650,7 +651,7 @@ namespace aspect
                 prp_indices[1] = n;
               else if (column_name == "cp,J/K/kg")
                 prp_indices[2] = n;
-              else if (column_name == "k,W/m/K")
+              else if (column_name == "k,W/m/K" || column_name == "k_lat,W/m/K")
                 {
                   prp_indices[3] = n;
                   thermal_conductivity_column_index = n;
@@ -712,6 +713,41 @@ namespace aspect
           AssertThrow(delta_press > 0, ExcMessage("Read in of Material header failed (delta_press)."));
           AssertThrow(n_pressure > 0, ExcMessage("Read in of Material header failed (numpress)."));
 
+          const std::streampos first_data_position = in.tellg();
+          std::string first_row;
+          std::string second_row;
+          std::getline(in, first_row);
+          std::getline(in, second_row);
+
+          std::istringstream first_row_stream(first_row);
+          std::istringstream second_row_stream(second_row);
+          double first_pressure;
+          double first_temperature;
+          double second_pressure;
+          double second_temperature;
+          if (first_natural_variable == "P(bar)")
+            {
+              first_row_stream >> first_pressure >> first_temperature;
+              second_row_stream >> second_pressure >> second_temperature;
+            }
+          else
+            {
+              first_row_stream >> first_temperature >> first_pressure;
+              second_row_stream >> second_temperature >> second_pressure;
+            }
+
+          AssertThrow(!first_row_stream.fail() && !second_row_stream.fail(),
+                      ExcMessage("Could not read the pressure and temperature coordinates from the first two data rows of "
+                                 + filename + "."));
+
+          const bool pressure_changes_first = std::abs((second_pressure-first_pressure)*1e5) > delta_press/2.0;
+          const bool temperature_changes_first = std::abs(second_temperature-first_temperature) > delta_temp/2.0;
+          AssertThrow(pressure_changes_first != temperature_changes_first,
+                      ExcMessage("The first two data rows of " + filename
+                                 + " do not identify a unique inner pressure-temperature grid coordinate."));
+
+          in.clear();
+          in.seekg(first_data_position);
 
           max_temp = min_temp + (n_temperature-1) * delta_temp;
           max_press = min_press + (n_pressure-1) * delta_press;
@@ -760,7 +796,8 @@ namespace aspect
                         {
                           AssertThrow(value_was_read,
                                       ExcMessage("The MAGEMin lookup file " + filename
-                                                 + " has an invalid thermal conductivity value in column k,W/m/K."));
+                                                 + " has an invalid thermal conductivity value in column "
+                                                 "k,W/m/K or k_lat,W/m/K."));
                           AssertThrow(numbers::is_finite(row_values[n]) && row_values[n] > 0.0,
                                       ExcMessage("Thermal conductivity values in the MAGEMin lookup file " + filename
                                                  + " must be finite and strictly positive."));
@@ -792,12 +829,9 @@ namespace aspect
               if (std::find(dominant_phase_names.begin(), dominant_phase_names.end(), phase) == dominant_phase_names.end())
                 dominant_phase_names.push_back(phase);
 
-              // The ordering of the first two columns in the PerpleX table files
-              // dictates whether the inner loop is over temperature or pressure.
-              // The first column is always the inner loop.
-              // The following lines populate the material property tables
-              // according to that implicit loop structure.
-              if (first_natural_variable == "T(K)")
+              // The detected inner grid coordinate determines how each input
+              // row maps to the temperature-pressure property tables.
+              if (temperature_changes_first)
                 {
                   density_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[0]];
                   thermal_expansivity_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[1]];

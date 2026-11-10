@@ -107,6 +107,21 @@ TEST_CASE("Material lookup parses conductivity after non-finite table values")
   CHECK(table.thermal_conductivity(3800.0, 1e9) == Approx(1.394966755));
 }
 
+TEST_CASE("Material lookup reads MAGEMin lattice conductivity")
+{
+  using aspect::MaterialModel::MaterialUtilities::Lookup::PerplexReader;
+
+  const std::string filename = aspect::Utilities::expand_ASPECT_SOURCE_DIR(
+                                 "$ASPECT_SOURCE_DIR/data/material-model/steinberger/"
+                                 "MAGEMin_Pyrolite_sb24_200T_135P_k.dat");
+  const PerplexReader table(filename, true, MPI_COMM_WORLD);
+
+  CHECK(table.has_thermal_conductivity());
+  CHECK(table.density(293.250503, 1e5) == Approx(3320.798821));
+  CHECK(table.density(273.15, 10075.619403e5) == Approx(3391.18904));
+  CHECK(table.thermal_conductivity(273.15, 1e5) == Approx(4.262124953));
+}
+
 TEST_CASE("Geometric conductivity volume-fraction mixing")
 {
   const std::vector<double> fractions = {0.5, 0.5};

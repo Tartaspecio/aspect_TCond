@@ -12,7 +12,7 @@ set Resume computation                     = false
 # Multiple composition setup
 subsection Compositional fields
   set Number of fields = 6
-  set Names of fields  = basalt_fraction, bgm090mg_fraction, bgm097mg_fraction, \
+  set Names of fields  = basalt_fraction, harzburgite_fraction, bgm097mg_fraction, \
                          bgm100mg_fraction, bgm_al_mg_fraction, bgm_fe_al_fraction
   set Types of fields  = chemical composition, chemical composition, chemical composition, \
                          chemical composition, chemical composition, chemical composition
@@ -62,7 +62,7 @@ subsection Initial composition model
                                    (subregion_count >= 4 && \
                                     x >= subregion_4_x_min && x <= subregion_4_x_max && \
                                     y >= subregion_4_y_min && y <= subregion_4_y_max)) ? \
-                                  bgm090mg_fraction_subregion : bgm090mg_fraction_main) : 0); 0; 0; 0; 0
+                                  harzburgite_fraction_subregion : harzburgite_fraction_main) : 0); 0; 0; 0; 0
   end
 end
 
@@ -74,22 +74,20 @@ subsection Material model
 
   subsection Steinberger model
     set Data directory                   = $ASPECT_SOURCE_DIR/data/material-model/steinberger/
-    # The lookup formulation requires the standard Perple_X columns plus
-    # k,W/m/K in every table. The available *_k file for this slot contains
-    # MORB lookup data, so its full set of material properties is used here.
-    set Material file names              = pyr_MS95_with_volume_fractions_lo_res_k.dat, \
-          morb_G13_with_volume_fractions_lo_res_k.dat, \
-          pyr_Bgm090Mg_with_volume_fractions_lo_res_k.dat, \
-          pyr_Bgm097Mg_with_volume_fractions_lo_res_k.dat, \
-          pyr_Bgm100Mg_with_volume_fractions_lo_res_k.dat, \
-          pyr_BgmAl_Mg_with_volume_fractions_lo_res_k.dat, \
-          pyr_BgmFe_Al_with_volume_fractions_lo_res_k.dat
+    # The lookup formulation reads lattice conductivity from column 11.
+    set Material file names              = MAGEMin_Pyrolite_sb24_200T_135P_k.dat, \
+                                           MAGEMin_Basalt_sb24_200T_135P_k.dat, \
+                                           MAGEMin_Harzburgite_sb24_200T_135P_k.dat, \
+                                           pyr_Bgm097Mg_with_volume_fractions_lo_res_k.dat, \
+                                           pyr_Bgm100Mg_with_volume_fractions_lo_res_k.dat, \
+                                           pyr_BgmAl_Mg_with_volume_fractions_lo_res_k.dat, \
+                                           pyr_BgmFe_Al_with_volume_fractions_lo_res_k.dat
     set Lateral viscosity file name      = temp-viscosity-prefactor.txt
     set Radial viscosity file name       = radial-visc-simple.txt
     set Bilinear interpolation           = true
     set Latent heat                      = false
 
-    # Read k,W/m/K from both material tables and use a geometric volume average.
+    # Use a geometric volume average of lattice conductivity.
     set Thermal conductivity formulation = lookup
 
     # You must set this to false to avoid step-wise viscosity inherited
@@ -157,7 +155,7 @@ subsection Initial temperature model
                                      (subregion_count >= 4 && \
                                       x >= subregion_4_x_min && x <= subregion_4_x_max && \
                                       y >= subregion_4_y_min && y <= subregion_4_y_max)) ? \
-                                    bgm090mg_fraction_subregion : bgm090mg_fraction_main) : 0); 0; 0; 0; 0
+                                    harzburgite_fraction_subregion : harzburgite_fraction_main) : 0); 0; 0; 0; 0
     end
   end
 
