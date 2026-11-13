@@ -340,6 +340,34 @@ namespace aspect
                                                                         in.pressure[i],
                                                                         volume_fractions[i]);
 
+          if (include_radiative_thermal_conductivity)
+            if (const std::shared_ptr<LookupThermalConductivityOutputs<dim>> conductivity_outputs
+                = out.template get_additional_output_object<LookupThermalConductivityOutputs<dim>>())
+              {
+                std::vector<double> lattice_conductivities;
+                std::vector<double> radiative_conductivities;
+                lattice_conductivities.reserve(volume_fractions[i].size());
+                radiative_conductivities.reserve(volume_fractions[i].size());
+
+                for (unsigned int material_index = 0; material_index < volume_fractions[i].size(); ++material_index)
+                  {
+                    const auto &material_lookup = equation_of_state.get_material_lookup(material_index);
+                    lattice_conductivities.push_back(material_lookup.lattice_thermal_conductivity(in.temperature[i],
+                                                                                                   in.pressure[i]));
+                    radiative_conductivities.push_back(material_lookup.radiative_thermal_conductivity(in.temperature[i],
+                                                                                                       in.pressure[i]));
+                  }
+
+                conductivity_outputs->output_values[0][i]
+                  = MaterialUtilities::average_value(volume_fractions[i],
+                                                     lattice_conductivities,
+                                                     MaterialUtilities::geometric);
+                conductivity_outputs->output_values[1][i]
+                  = MaterialUtilities::average_value(volume_fractions[i],
+                                                     radiative_conductivities,
+                                                     MaterialUtilities::geometric);
+              }
+
           if (in.requests_property(MaterialProperties::viscosity) || in.requests_property(MaterialProperties::additional_outputs))
             {
               out.viscosities[i] = viscosity(i, volume_fractions[i], in, out);
@@ -460,7 +488,9 @@ namespace aspect
                              Patterns::Bool (),
                              "When the thermal conductivity formulation is set to 'lookup', "
                              "this selects the total conductivity column k_tot,W/m/K (column 13) "
-                             "instead of the lattice conductivity column k_lat,W/m/K (column 11).");
+                             "instead of the lattice conductivity column k_lat,W/m/K (column 11), "
+                             "and outputs the separate lattice and radiative components as named "
+                             "additional outputs.");
           ThermalConductivity::TosiStackhouse<dim>::declare_parameters (prm);
 
           // Table lookup parameters
@@ -522,6 +552,10 @@ namespace aspect
             }
           else
             AssertThrow(false, ExcMessage("Not a valid thermal conductivity formulation"));
+
+          AssertThrow(!include_radiative_thermal_conductivity || use_lookup_thermal_conductivity,
+                      ExcMessage("The 'Include radiative thermal conductivity' parameter can only be enabled "
+                                 "when the 'Thermal conductivity formulation' is set to 'lookup'."));
 
           if (!use_lookup_thermal_conductivity)
             thermal_conductivity->parse_parameters(prm);
@@ -606,6 +640,11 @@ namespace aspect
     Steinberger<dim>::create_additional_named_outputs (MaterialModel::MaterialModelOutputs<dim> &out) const
     {
       equation_of_state.create_additional_named_outputs(out);
+
+      if (include_radiative_thermal_conductivity
+          && out.template has_additional_output_object<LookupThermalConductivityOutputs<dim>>() == false)
+        out.additional_outputs.push_back(
+          std::make_unique<LookupThermalConductivityOutputs<dim>>(out.n_evaluation_points()));
 
       if (this->introspection().composition_type_exists(CompositionalFieldDescription::density)
           && out.template has_additional_output_object<PrescribedFieldOutputs<dim>>() == false)

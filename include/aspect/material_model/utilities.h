@@ -91,6 +91,14 @@ namespace aspect
             thermal_conductivity(const double temperature,
                                  const double pressure) const;
 
+            double
+            lattice_thermal_conductivity(const double temperature,
+                                         const double pressure) const;
+
+            double
+            radiative_thermal_conductivity(const double temperature,
+                                           const double pressure) const;
+
             bool
             has_thermal_conductivity() const;
 
@@ -231,6 +239,8 @@ namespace aspect
             dealii::Table<2,double> thermal_expansivity_values;
             dealii::Table<2,double> specific_heat_values;
             dealii::Table<2,double> thermal_conductivity_values;
+            dealii::Table<2,double> lattice_thermal_conductivity_values;
+            dealii::Table<2,double> radiative_thermal_conductivity_values;
             dealii::Table<2,double> vp_values;
             dealii::Table<2,double> vs_values;
             dealii::Table<2,double> enthalpy_values;
@@ -258,6 +268,8 @@ namespace aspect
             bool interpolation;
             bool has_dominant_phase_column;
             bool has_thermal_conductivity_column = false;
+            bool has_lattice_thermal_conductivity_column = false;
+            bool has_radiative_thermal_conductivity_column = false;
             std::vector<std::string> dominant_phase_names;
         };
 

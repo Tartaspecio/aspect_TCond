@@ -106,6 +106,19 @@ namespace aspect
       };
     }
 
+    template <int dim>
+    class LookupThermalConductivityOutputs : public NamedAdditionalMaterialOutputs<dim>
+    {
+      public:
+        explicit
+        LookupThermalConductivityOutputs(const unsigned int n_points)
+          :
+          NamedAdditionalMaterialOutputs<dim>({"lattice_thermal_conductivity",
+                                               "radiative_thermal_conductivity"},
+                                              n_points)
+        {}
+    };
+
     /**
      * A variable viscosity material model that reads the essential values of
      * coefficients from tables in input files.

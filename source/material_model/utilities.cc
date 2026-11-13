@@ -73,6 +73,24 @@ namespace aspect
           return conductivity;
         }
 
+        double
+        MaterialLookup::lattice_thermal_conductivity(const double temperature,
+                                                     const double pressure) const
+        {
+          AssertThrow(has_lattice_thermal_conductivity_column,
+                      ExcMessage("The material lookup table does not contain a lattice thermal conductivity column."));
+          return value(temperature, pressure, lattice_thermal_conductivity_values, interpolation);
+        }
+
+        double
+        MaterialLookup::radiative_thermal_conductivity(const double temperature,
+                                                       const double pressure) const
+        {
+          AssertThrow(has_radiative_thermal_conductivity_column,
+                      ExcMessage("The material lookup table does not contain a radiative thermal conductivity column."));
+          return value(temperature, pressure, radiative_thermal_conductivity_values, interpolation);
+        }
+
         bool
         MaterialLookup::has_thermal_conductivity() const
         {
@@ -620,6 +638,7 @@ namespace aspect
           unsigned int dominant_phase_column_index = numbers::invalid_unsigned_int;
           unsigned int thermal_conductivity_column_index = numbers::invalid_unsigned_int;
           unsigned int lattice_thermal_conductivity_column_index = numbers::invalid_unsigned_int;
+          unsigned int radiative_thermal_conductivity_column_index = numbers::invalid_unsigned_int;
           unsigned int total_thermal_conductivity_column_index = numbers::invalid_unsigned_int;
           unsigned int generic_thermal_conductivity_column_index = numbers::invalid_unsigned_int;
 
@@ -659,6 +678,8 @@ namespace aspect
                 generic_thermal_conductivity_column_index = n;
               else if (column_name == "k_lat,W/m/K")
                 lattice_thermal_conductivity_column_index = n;
+              else if (column_name == "k_rad,W/m/K")
+                radiative_thermal_conductivity_column_index = n;
               else if (column_name == "k_tot,W/m/K")
                 total_thermal_conductivity_column_index = n;
               else if (column_name == "vp,km/s")
@@ -701,6 +722,13 @@ namespace aspect
                           ExcMessage("The PerpleX lookup file " + filename
                                      + " does not contain a k_tot,W/m/K column, which is required "
                                      "when radiative thermal conductivity is enabled."));
+              AssertThrow(lattice_thermal_conductivity_column_index != numbers::invalid_unsigned_int
+                          && radiative_thermal_conductivity_column_index != numbers::invalid_unsigned_int,
+                          ExcMessage("The PerpleX lookup file " + filename
+                                     + " must contain k_lat,W/m/K and k_rad,W/m/K columns to output "
+                                     "lattice and radiative thermal conductivity."));
+              has_lattice_thermal_conductivity_column = true;
+              has_radiative_thermal_conductivity_column = true;
             }
           else
             {
@@ -783,6 +811,10 @@ namespace aspect
           specific_heat_values.reinit(n_temperature,n_pressure);
           if (has_thermal_conductivity_column)
             thermal_conductivity_values.reinit(n_temperature,n_pressure);
+          if (has_lattice_thermal_conductivity_column)
+            lattice_thermal_conductivity_values.reinit(n_temperature,n_pressure);
+          if (has_radiative_thermal_conductivity_column)
+            radiative_thermal_conductivity_values.reinit(n_temperature,n_pressure);
           vp_values.reinit(n_temperature,n_pressure);
           vs_values.reinit(n_temperature,n_pressure);
           enthalpy_values.reinit(n_temperature,n_pressure);
@@ -828,6 +860,20 @@ namespace aspect
                                       ExcMessage("Thermal conductivity values in the MAGEMin lookup file " + filename
                                                  + " must be finite and strictly positive."));
                         }
+                      if (use_total_thermal_conductivity
+                          && n == lattice_thermal_conductivity_column_index)
+                        {
+                          AssertThrow(value_was_read && numbers::is_finite(row_values[n]) && row_values[n] > 0.0,
+                                      ExcMessage("Lattice thermal conductivity values in the PerpleX lookup file "
+                                                 + filename + " must be finite and strictly positive."));
+                        }
+                      if (use_total_thermal_conductivity
+                          && n == radiative_thermal_conductivity_column_index)
+                        {
+                          AssertThrow(value_was_read && numbers::is_finite(row_values[n]) && row_values[n] > 0.0,
+                                      ExcMessage("Radiative thermal conductivity values in the PerpleX lookup file "
+                                                 + filename + " must be finite and strictly positive."));
+                        }
                     }
 
                   // P-T grids created with PerpleX-werami sometimes contain rows
@@ -864,6 +910,10 @@ namespace aspect
                   specific_heat_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[2]];
                   if (has_thermal_conductivity_column)
                     thermal_conductivity_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[3]];
+                  if (has_lattice_thermal_conductivity_column)
+                    lattice_thermal_conductivity_values[i%n_temperature][i/n_temperature]=row_values[lattice_thermal_conductivity_column_index];
+                  if (has_radiative_thermal_conductivity_column)
+                    radiative_thermal_conductivity_values[i%n_temperature][i/n_temperature]=row_values[radiative_thermal_conductivity_column_index];
                   vp_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[4]];
                   vs_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[5]];
                   enthalpy_values[i%n_temperature][i/n_temperature]=row_values[prp_indices[6]];
@@ -886,6 +936,10 @@ namespace aspect
                   specific_heat_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[2]];
                   if (has_thermal_conductivity_column)
                     thermal_conductivity_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[3]];
+                  if (has_lattice_thermal_conductivity_column)
+                    lattice_thermal_conductivity_values[i/n_pressure][i%n_pressure]=row_values[lattice_thermal_conductivity_column_index];
+                  if (has_radiative_thermal_conductivity_column)
+                    radiative_thermal_conductivity_values[i/n_pressure][i%n_pressure]=row_values[radiative_thermal_conductivity_column_index];
                   vp_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[4]];
                   vs_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[5]];
                   enthalpy_values[i/n_pressure][i%n_pressure]=row_values[prp_indices[6]];

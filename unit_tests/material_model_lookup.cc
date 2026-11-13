@@ -81,6 +81,8 @@ TEST_CASE("Material lookup selects lattice or total thermal conductivity")
   CHECK(total_table.thermal_conductivity(300.0, 0.0) == Approx(5.0));
   CHECK(lattice_table.thermal_conductivity(400.0, 1e9) == Approx(8.0));
   CHECK(total_table.thermal_conductivity(400.0, 1e9) == Approx(15.0));
+  CHECK(total_table.lattice_thermal_conductivity(400.0, 1e9) == Approx(8.0));
+  CHECK(total_table.radiative_thermal_conductivity(400.0, 1e9) == Approx(7.0));
 
   CHECK_THROWS_WITH(PerplexReader(lookup_test_file("conductivity.dat"),
                                   true,
