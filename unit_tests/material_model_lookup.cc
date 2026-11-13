@@ -67,6 +67,28 @@ TEST_CASE("Material lookup optional thermal conductivity column")
   CHECK_THROWS(legacy_table_without_conductivity.thermal_conductivity(350.0, 5e8));
 }
 
+TEST_CASE("Material lookup selects lattice or total thermal conductivity")
+{
+  using aspect::MaterialModel::MaterialUtilities::Lookup::PerplexReader;
+
+  const std::string filename = lookup_test_file("radiative-conductivity.dat");
+  const PerplexReader lattice_table(filename, true, MPI_COMM_WORLD);
+  const PerplexReader total_table(filename, true, MPI_COMM_WORLD, true);
+
+  REQUIRE(lattice_table.has_thermal_conductivity());
+  REQUIRE(total_table.has_thermal_conductivity());
+  CHECK(lattice_table.thermal_conductivity(300.0, 0.0) == Approx(2.0));
+  CHECK(total_table.thermal_conductivity(300.0, 0.0) == Approx(5.0));
+  CHECK(lattice_table.thermal_conductivity(400.0, 1e9) == Approx(8.0));
+  CHECK(total_table.thermal_conductivity(400.0, 1e9) == Approx(15.0));
+
+  CHECK_THROWS_WITH(PerplexReader(lookup_test_file("conductivity.dat"),
+                                  true,
+                                  MPI_COMM_WORLD,
+                                  true),
+                    Catch::Matchers::Contains("k_tot,W/m/K column"));
+}
+
 TEST_CASE("Material lookup rejects invalid conductivity values")
 {
   using aspect::MaterialModel::MaterialUtilities::Lookup::PerplexReader;

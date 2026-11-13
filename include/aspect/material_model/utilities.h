@@ -283,7 +283,8 @@ namespace aspect
           public:
             PerplexReader(const std::string &filename,
                           const bool interpol,
-                          const MPI_Comm comm);
+                          const MPI_Comm comm,
+                          const bool use_total_thermal_conductivity = false);
         };
 
         /**

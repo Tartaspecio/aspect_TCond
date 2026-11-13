@@ -66,7 +66,7 @@ namespace aspect
         {
           AssertThrow(has_thermal_conductivity_column,
                       ExcMessage("The material lookup table does not contain a thermal conductivity column named "
-                                 "k,W/m/K or k_lat,W/m/K."));
+                                 "k,W/m/K, k_lat,W/m/K, or k_tot,W/m/K."));
           const double conductivity = value(temperature,pressure,thermal_conductivity_values,interpolation);
           AssertThrow(numbers::is_finite(conductivity) && conductivity > 0.0,
                       ExcMessage("Thermal conductivity values in a material lookup table must be finite and strictly positive."));
@@ -530,7 +530,8 @@ namespace aspect
 
         PerplexReader::PerplexReader(const std::string &filename,
                                      const bool interpol,
-                                     const MPI_Comm comm)
+                                     const MPI_Comm comm,
+                                     const bool use_total_thermal_conductivity)
         {
           /* Initializing variables */
           interpolation = interpol;
@@ -618,6 +619,9 @@ namespace aspect
           std::vector<int> phase_column_indices;
           unsigned int dominant_phase_column_index = numbers::invalid_unsigned_int;
           unsigned int thermal_conductivity_column_index = numbers::invalid_unsigned_int;
+          unsigned int lattice_thermal_conductivity_column_index = numbers::invalid_unsigned_int;
+          unsigned int total_thermal_conductivity_column_index = numbers::invalid_unsigned_int;
+          unsigned int generic_thermal_conductivity_column_index = numbers::invalid_unsigned_int;
 
           // First two columns should be P(bar) and T(K).
           // Here we find the order.
@@ -651,12 +655,12 @@ namespace aspect
                 prp_indices[1] = n;
               else if (column_name == "cp,J/K/kg")
                 prp_indices[2] = n;
-              else if (column_name == "k,W/m/K" || column_name == "k_lat,W/m/K")
-                {
-                  prp_indices[3] = n;
-                  thermal_conductivity_column_index = n;
-                  has_thermal_conductivity_column = true;
-                }
+              else if (column_name == "k,W/m/K")
+                generic_thermal_conductivity_column_index = n;
+              else if (column_name == "k_lat,W/m/K")
+                lattice_thermal_conductivity_column_index = n;
+              else if (column_name == "k_tot,W/m/K")
+                total_thermal_conductivity_column_index = n;
               else if (column_name == "vp,km/s")
                 prp_indices[4] = n;
               else if (column_name == "vs,km/s")
@@ -689,6 +693,28 @@ namespace aspect
                     }
                 }
             }
+
+          if (use_total_thermal_conductivity)
+            {
+              thermal_conductivity_column_index = total_thermal_conductivity_column_index;
+              AssertThrow(thermal_conductivity_column_index != numbers::invalid_unsigned_int,
+                          ExcMessage("The PerpleX lookup file " + filename
+                                     + " does not contain a k_tot,W/m/K column, which is required "
+                                     "when radiative thermal conductivity is enabled."));
+            }
+          else
+            {
+              thermal_conductivity_column_index = lattice_thermal_conductivity_column_index;
+              if (thermal_conductivity_column_index == numbers::invalid_unsigned_int)
+                thermal_conductivity_column_index = generic_thermal_conductivity_column_index;
+            }
+
+          if (thermal_conductivity_column_index != numbers::invalid_unsigned_int)
+            {
+              prp_indices[3] = thermal_conductivity_column_index;
+              has_thermal_conductivity_column = true;
+            }
+
           AssertThrow(prp_indices[0] >= 0
                       && prp_indices[1] >= 0
                       && prp_indices[2] >= 0
@@ -797,7 +823,7 @@ namespace aspect
                           AssertThrow(value_was_read,
                                       ExcMessage("The MAGEMin lookup file " + filename
                                                  + " has an invalid thermal conductivity value in column "
-                                                 "k,W/m/K or k_lat,W/m/K."));
+                                                 "k,W/m/K, k_lat,W/m/K, or k_tot,W/m/K."));
                           AssertThrow(numbers::is_finite(row_values[n]) && row_values[n] > 0.0,
                                       ExcMessage("Thermal conductivity values in the MAGEMin lookup file " + filename
                                                  + " must be finite and strictly positive."));

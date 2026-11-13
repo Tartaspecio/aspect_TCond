@@ -253,6 +253,7 @@ namespace aspect
          * instead of being computed by a thermal-conductivity plugin.
          */
         bool use_lookup_thermal_conductivity = false;
+        bool include_radiative_thermal_conductivity = false;
 
         /**
          * Compositional prefactors with which to multiply the reference viscosity.

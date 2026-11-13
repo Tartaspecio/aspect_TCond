@@ -1,0 +1,17 @@
+|MAGEMin .dat file
+Thermal Conductivity Column Selection Test
+2
+P(bar)
+0
+10000
+2
+T(K)
+300
+100
+2
+11
+P(bar) T(K) rho,kg/m3 alpha,1/K cp,J/K/kg k_lat,W/m/K k_rad,W/m/K k_tot,W/m/K vp,km/s vs,km/s h,J/kg
+0 300 3300 3e-5 1000 2 3 5 8 4 100000
+10000 300 3300 3e-5 1000 6 2 8 8 4 100000
+0 400 3300 3e-5 1000 4 1 5 8 4 100000
+10000 400 3300 3e-5 1000 8 7 15 8 4 100000

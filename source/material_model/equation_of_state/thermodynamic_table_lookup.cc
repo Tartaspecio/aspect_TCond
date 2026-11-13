@@ -28,7 +28,7 @@ namespace aspect
     {
       template <int dim>
       void
-      ThermodynamicTableLookup<dim>::initialize()
+      ThermodynamicTableLookup<dim>::initialize(const bool use_total_thermal_conductivity)
       {
         // This model allows the user to provide several PerpleX or HeFESTo
         // P-T lookup files, each of which corresponds to a different material.
@@ -51,7 +51,8 @@ namespace aspect
               material_lookup
               .push_back(std::make_unique<MaterialModel::MaterialUtilities::Lookup::PerplexReader>(data_directory+material_file_names[i],
                          use_bilinear_interpolation,
-                         this->get_mpi_communicator()));
+                         this->get_mpi_communicator(),
+                         use_total_thermal_conductivity));
             else if (material_file_format == hefesto)
               material_lookup
               .push_back(std::make_unique<MaterialModel::MaterialUtilities::Lookup::HeFESToReader>(data_directory+material_file_names[i],

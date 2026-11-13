@@ -76,6 +76,9 @@ subsection Material model
     set Data directory                   = $ASPECT_SOURCE_DIR/data/material-model/steinberger/steinberger_lookup_tables/MAGEMin/
 
     # The lookup formulation reads lattice conductivity from column 11.
+    # Set this to true to use total (lattice plus radiative) conductivity from column 13.
+    set Include radiative thermal conductivity = false
+
     # Files are ordered as pyrolite (background), basalt (LLSVP), and harzburgite (ULVZ).
     set Material file names              = MAGEMin_Pyrolite_sb24_200T_135P_Bgm097Mg_k.dat, \
                                            MAGEMin_Basalt_sb24_200T_135P_Bgm097Mg_k.dat, \

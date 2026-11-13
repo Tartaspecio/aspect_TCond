@@ -129,7 +129,8 @@ namespace aspect
     void
     Steinberger<dim>::initialize()
     {
-      equation_of_state.initialize();
+      equation_of_state.initialize(use_lookup_thermal_conductivity
+                                   && include_radiative_thermal_conductivity);
       if (use_lookup_thermal_conductivity)
         for (unsigned int i = 0; i < equation_of_state.number_of_lookups(); ++i)
           AssertThrow(equation_of_state.get_material_lookup(i).has_thermal_conductivity(),
@@ -455,6 +456,11 @@ namespace aspect
                              "The conductivity description can consist of several layers with "
                              "different sets of parameters. Note that the Stackhouse "
                              "parametrization is only valid for the lower mantle (bridgmanite).");
+          prm.declare_entry ("Include radiative thermal conductivity", "false",
+                             Patterns::Bool (),
+                             "When the thermal conductivity formulation is set to 'lookup', "
+                             "this selects the total conductivity column k_tot,W/m/K (column 13) "
+                             "instead of the lattice conductivity column k_lat,W/m/K (column 11).");
           ThermalConductivity::TosiStackhouse<dim>::declare_parameters (prm);
 
           // Table lookup parameters
@@ -488,6 +494,7 @@ namespace aspect
           radial_viscosity_file_name      = prm.get ("Radial viscosity file name");
           lateral_viscosity_file_name     = prm.get ("Lateral viscosity file name");
           use_lateral_average_temperature = prm.get_bool ("Use lateral average temperature for viscosity");
+          include_radiative_thermal_conductivity = prm.get_bool ("Include radiative thermal conductivity");
           n_lateral_slices                = prm.get_integer("Number lateral average bands");
           min_eta                         = prm.get_double ("Minimum viscosity");
           max_eta                         = prm.get_double ("Maximum viscosity");

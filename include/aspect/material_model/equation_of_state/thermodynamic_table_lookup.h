@@ -36,11 +36,12 @@ namespace aspect
       {
         public:
           /**
-           * Initialization function. Loads the material data and sets up
-           * pointers.
+           * Loads the material data and sets up pointers. If
+           * @p use_total_thermal_conductivity is true, use the total
+           * conductivity column in PerpleX tables.
            */
           void
-          initialize ();
+          initialize (const bool use_total_thermal_conductivity = false);
 
           /**
            * Returns the number of lookups
