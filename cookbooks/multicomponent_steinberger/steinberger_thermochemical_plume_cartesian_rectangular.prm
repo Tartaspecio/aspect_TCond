@@ -5,9 +5,9 @@ set Output directory                       = output-multicomponent-steinberger
 set CFL number                             = 1.0
 set End time                               = 1e9
 set Adiabatic surface temperature          = 1600.0
-set Use years in output instead of seconds = true
+set Use years instead of seconds           = true
 set Maximum first time step                = 1.e4
-set Resume computation                     = true
+set Resume computation                     = false
 
 # Pyrolite is the background; the fields track basalt (LLVSP) and harzburgite (ULVZ).
 subsection Compositional fields
@@ -88,8 +88,8 @@ subsection Material model
     # PerpleX_Basalt_sb24_68T_37P_Bgm097Mg_k.dat, \
     # PerpleX_Harzburgite_sb24_68T_37P_Bgm097Mg_k.dat
     
-    set Lateral viscosity file name      = temp-viscosity-prefactor.txt
-    set Radial viscosity file name       = radial-visc-simple.txt
+    set Lateral viscosity file name      = ../../temp-viscosity-prefactor.txt
+    set Radial viscosity file name       = ../../radial-visc-simple.txt
     set Bilinear interpolation           = true
     set Latent heat                      = false
 
